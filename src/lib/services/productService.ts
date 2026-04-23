@@ -1,10 +1,10 @@
-import { createClient } from '../supabase/server'
+import { createClient } from '../supabase/client'
 
 export interface Product {
   id: string
   name: string
   price: number
-  color?: string // Opcional - si no viene de la BD, usaremos un color por defecto
+  color?: string // Opcional - asignado por defecto
   business_id: string
   description?: string
   stock?: number
@@ -37,7 +37,7 @@ function getDefaultColor(productId: string): string {
  */
 export async function getProductsByBusiness(businessId: string): Promise<Product[] | null> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     // Consulta solo las columnas esenciales que siempre deben existir
     const { data, error } = await supabase
@@ -77,7 +77,7 @@ export async function getProductById(
   businessId: string
 ): Promise<Product | null> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     // Consulta solo las columnas esenciales
     const { data, error } = await supabase
@@ -110,12 +110,12 @@ export async function getProductById(
 }
 
 /**
- * Obtiene el business_id del usuario actual
+ * Obtiene el business_id del usuario actual desde el navegador
  * @returns El business_id o null
  */
 export async function getCurrentUserBusinessId(): Promise<string | null> {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
 
     // Obtener usuario actual
     const { data: { user }, error: userError } = await supabase.auth.getUser()
