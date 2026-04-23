@@ -4,10 +4,28 @@ export interface Product {
   id: string
   name: string
   price: number
-  color: string
+  color?: string // Opcional - si no viene de la BD, usaremos un color por defecto
   business_id: string
   description?: string
   stock?: number
+}
+
+// Colores por defecto para cuando no hay color en la BD
+const DEFAULT_COLORS = [
+  'bg-blue-500',
+  'bg-purple-500',
+  'bg-pink-500',
+  'bg-green-500',
+  'bg-yellow-500',
+  'bg-red-500',
+  'bg-indigo-500',
+  'bg-cyan-500',
+]
+
+// Función para obtener un color por defecto basado en el ID del producto
+function getDefaultColor(productId: string): string {
+  const hash = productId.charCodeAt(0) + productId.charCodeAt(productId.length - 1)
+  return DEFAULT_COLORS[hash % DEFAULT_COLORS.length]
 }
 
 /**
@@ -31,7 +49,13 @@ export async function getProductsByBusiness(businessId: string): Promise<Product
       return null
     }
 
-    return data || []
+    // Asignar color por defecto si no existe
+    const productsWithColors = (data || []).map(product => ({
+      ...product,
+      color: product.color || getDefaultColor(product.id)
+    }))
+
+    return productsWithColors
   } catch (err) {
     console.error('Unexpected error fetching products:', err)
     return null
@@ -61,6 +85,11 @@ export async function getProductById(
     if (error) {
       console.error('Error fetching product:', error)
       return null
+    }
+
+    // Asignar color por defecto si no existe
+    if (data) {
+      data.color = data.color || getDefaultColor(data.id)
     }
 
     return data

@@ -79,7 +79,7 @@ export default function ProductGrid({ products, isLoading, error }: ProductGridP
           className="flex flex-col items-center justify-center text-center p-4 h-32 md:h-40 rounded-2xl shadow-sm border border-slate-200 bg-white hover:bg-slate-50 hover:border-blue-400 active:scale-95 transition-all select-none group"
           title={product.description || product.name}
         >
-          <div className={`w-12 h-12 md:w-16 md:h-16 rounded-full mb-3 shadow-sm ${product.color} group-hover:scale-105 transition-transform`} />
+          <div className={`w-12 h-12 md:w-16 md:h-16 rounded-full mb-3 shadow-sm ${product.color || 'bg-blue-500'} group-hover:scale-105 transition-transform`} />
           
           <span className="font-semibold text-slate-800 text-sm md:text-base leading-tight">
             {product.name}
