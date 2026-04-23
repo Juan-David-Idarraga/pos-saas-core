@@ -7,7 +7,7 @@ export interface Product {
   id: string
   name: string
   price: number
-  color: string
+  color?: string // Opcional - asignado por defecto en productService
   business_id: string
   description?: string
   stock?: number

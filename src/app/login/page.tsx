@@ -20,6 +20,7 @@ export default function LoginPage() {
       if (isSignUp) {
         const result = await signUp(email, password, fullName)
         if (result?.error) {
+          console.error('Sign up error:', result.error)
           setError(result.error)
         } else {
           setError(null)
@@ -30,12 +31,17 @@ export default function LoginPage() {
           alert(result?.message || 'Registro exitoso. Por favor, inicia sesión.')
         }
       } else {
+        console.log('Attempting sign in with:', email)
         const result = await signIn(email, password)
         if (result?.error) {
+          console.error('Sign in error:', result.error)
           setError(result.error)
+        } else {
+          console.log('Sign in successful, redirecting...')
         }
       }
     } catch (err) {
+      console.error('Unexpected error:', err)
       setError('Ocurrió un error inesperado. Intenta de nuevo.')
     } finally {
       setIsLoading(false)
@@ -147,8 +153,15 @@ export default function LoginPage() {
           </button>
         </form>
 
+        {/* Debug Info */}
+        <div className="mt-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+          <p className="text-xs font-semibold text-yellow-900 mb-2">⚠️ Debugging:</p>
+          <p className="text-xs text-yellow-800">Abre la consola (F12) para ver errores detallados.</p>
+          <p className="text-xs text-yellow-800 mt-1">Verifica que .env.local tenga NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY</p>
+        </div>
+
         {/* Demo Credentials */}
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <div className="mt-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
           <p className="text-xs font-semibold text-blue-900 mb-2">📝 Credenciales de Prueba:</p>
           <p className="text-xs text-blue-800">Email: <code className="bg-white px-2 py-1 rounded">demo@example.com</code></p>
           <p className="text-xs text-blue-800">Contraseña: <code className="bg-white px-2 py-1 rounded">demo123456</code></p>
