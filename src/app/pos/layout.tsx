@@ -6,88 +6,54 @@ export default async function POSLayout({ children }: { children: React.ReactNod
     console.log('[POSLayout] Starting layout validation...')
     
     const supabase = await createClient()
-    console.log('[POSLayout] Supabase client created')
     
-    // 1. Obtener usuario autenticado
+    // 1. Obtener usuario autenticado (CRÍTICO - si falla, redirigir a login)
     const { data: { user }, error: userError } = await supabase.auth.getUser()
-    console.log('[POSLayout] Auth user:', { 
-      hasUser: !!user, 
-      email: user?.email,
-      userId: user?.id,
-      error: userError?.message 
-    })
     
-    if (!user) {
-      console.log('[POSLayout] No user found, redirecting to /login')
+    if (!user || userError) {
+      console.log('[POSLayout] No authenticated user, redirecting to /login')
       redirect('/login')
     }
 
-    // 2. Obtener perfil del usuario
-    console.log('[POSLayout] Fetching profile for user:', user.id)
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('id, full_name, business_id')
-      .eq('id', user.id)
-      .single()
+    console.log('[POSLayout] User authenticated:', user.email)
 
-    console.log('[POSLayout] Profile query result:', {
-      hasProfile: !!profile,
-      profile: profile ? { id: profile.id, full_name: profile.full_name, business_id: profile.business_id } : null,
-      error: profileError?.message,
-      errorCode: profileError?.code
-    })
+    // 2. Intentar obtener información del negocio (NO CRÍTICO - usar valores por defecto si falla)
+    let businessName = 'Mi Negocio'
+    let userEmail = user.email || 'Usuario'
 
-    if (profileError || !profile) {
-      console.log('[POSLayout] Profile error or not found, redirecting to /setup')
-      redirect('/setup')
+    try {
+      // Intentar obtener el perfil y negocio del usuario
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('business_id')
+        .eq('id', user.id)
+        .single()
+
+      if (profile?.business_id) {
+        // Si tenemos business_id, intentar obtener el nombre del negocio
+        const { data: business } = await supabase
+          .from('businesses')
+          .select('name')
+          .eq('id', profile.business_id)
+          .single()
+
+        if (business?.name) {
+          businessName = business.name
+          console.log('[POSLayout] Business found:', businessName)
+        }
+      }
+    } catch (err) {
+      console.log('[POSLayout] Could not fetch business info, using defaults:', err instanceof Error ? err.message : 'Unknown error')
+      // Continuar de todas formas - no es crítico
     }
-
-    // 3. Obtener información del negocio
-    if (!profile.business_id) {
-      console.log('[POSLayout] No business_id in profile, redirecting to /setup')
-      redirect('/setup')
-    }
-
-    console.log('[POSLayout] Fetching business info for business_id:', profile.business_id)
-    const { data: business, error: businessError } = await supabase
-      .from('businesses')
-      .select('id, name, subscription_status')
-      .eq('id', profile.business_id)
-      .single()
-
-    console.log('[POSLayout] Business query result:', {
-      hasBusiness: !!business,
-      business: business ? { 
-        id: business.id, 
-        name: business.name, 
-        subscription_status: business.subscription_status 
-      } : null,
-      error: businessError?.message,
-      errorCode: businessError?.code
-    })
-
-    if (businessError || !business) {
-      console.log('[POSLayout] Business not found, redirecting to /blocked')
-      redirect('/blocked')
-    }
-
-    // 4. Validar estado de suscripción
-    console.log('[POSLayout] Checking subscription status:', business.subscription_status)
-    
-    if (business.subscription_status !== 'active') {
-      console.log('[POSLayout] Subscription not active, redirecting to /blocked')
-      redirect('/blocked')
-    }
-
-    console.log('[POSLayout] All validations passed, rendering POS')
 
     return (
       <div className="h-screen w-full flex flex-col overflow-hidden bg-slate-50">
         {/* Header del POS con información del usuario */}
         <header className="bg-white border-b border-slate-200 px-6 py-3 flex justify-between items-center">
           <div>
-            <h2 className="text-lg font-semibold text-slate-800">Bienvenido, {user.email}</h2>
-            <p className="text-sm text-slate-500">Negocio: {business.name}</p>
+            <h2 className="text-lg font-semibold text-slate-800">Bienvenido, {userEmail}</h2>
+            <p className="text-sm text-slate-500">Negocio: {businessName}</p>
           </div>
           <form action={async () => {
             'use server'
@@ -109,11 +75,8 @@ export default async function POSLayout({ children }: { children: React.ReactNod
       </div>
     )
   } catch (err) {
-    console.error('[POSLayout] Unexpected error:', {
-      error: err,
-      message: err instanceof Error ? err.message : 'Unknown error',
-      stack: err instanceof Error ? err.stack : undefined,
-    })
-    throw err
+    console.error('[POSLayout] Critical error:', err instanceof Error ? err.message : 'Unknown error')
+    // Si hay un error crítico, redirigir a login
+    redirect('/login')
   }
 }

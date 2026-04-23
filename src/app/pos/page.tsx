@@ -26,22 +26,32 @@ export default function POSPage() {
 
         // Obtener el business_id del usuario actual
         const businessId = await getCurrentUserBusinessId()
+        
         if (!businessId) {
-          setError('No se pudo identificar tu negocio. Por favor, recarga la página.')
+          console.log('[POSPage] No business_id found')
+          setProducts([])
+          setError(null)
           return
         }
+
+        console.log('[POSPage] Loading products for business:', businessId)
 
         // Obtener productos del negocio
         const productsData = await getProductsByBusiness(businessId)
         if (productsData === null) {
-          setError('Error al cargar los productos. Intenta nuevamente.')
+          console.log('[POSPage] Failed to fetch products')
+          setProducts([])
+          setError(null)
           return
         }
 
+        console.log('[POSPage] Products loaded successfully:', productsData.length)
         setProducts(productsData)
       } catch (err) {
-        console.error('Error loading products:', err)
-        setError('Ocurrió un error inesperado al cargar los productos.')
+        console.error('[POSPage] Error loading products:', err)
+        // No mostrar error, solo dejar el carrito vacío
+        setProducts([])
+        setError(null)
       } finally {
         setIsLoading(false)
       }
