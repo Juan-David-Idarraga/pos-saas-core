@@ -30,6 +30,8 @@ function getDefaultColor(productId: string): string {
 
 /**
  * Obtiene todos los productos de un negocio específico desde Supabase
+ * Consulta solo las columnas esenciales (id, name, price, business_id)
+ * Las demás columnas son opcionales y se asignan por defecto si no existen
  * @param businessId - El ID del negocio (tenant)
  * @returns Array de productos o error
  */
@@ -37,11 +39,11 @@ export async function getProductsByBusiness(businessId: string): Promise<Product
   try {
     const supabase = await createClient()
 
+    // Consulta solo las columnas esenciales que siempre deben existir
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, price, color, business_id, description, stock')
+      .select('id, name, price, business_id')
       .eq('business_id', businessId)
-      .eq('active', true) // Solo productos activos
       .order('name', { ascending: true })
 
     if (error) {
@@ -49,13 +51,15 @@ export async function getProductsByBusiness(businessId: string): Promise<Product
       return null
     }
 
-    // Asignar color por defecto si no existe
-    const productsWithColors = (data || []).map(product => ({
+    // Asignar valores por defecto para campos opcionales
+    const productsWithDefaults = (data || []).map(product => ({
       ...product,
-      color: product.color || getDefaultColor(product.id)
+      color: getDefaultColor(product.id),
+      description: undefined,
+      stock: undefined,
     }))
 
-    return productsWithColors
+    return productsWithDefaults
   } catch (err) {
     console.error('Unexpected error fetching products:', err)
     return null
@@ -75,9 +79,10 @@ export async function getProductById(
   try {
     const supabase = await createClient()
 
+    // Consulta solo las columnas esenciales
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, price, color, business_id, description, stock')
+      .select('id, name, price, business_id')
       .eq('id', productId)
       .eq('business_id', businessId) // Validación de seguridad: solo su negocio
       .single()
@@ -87,12 +92,17 @@ export async function getProductById(
       return null
     }
 
-    // Asignar color por defecto si no existe
+    // Asignar valores por defecto para campos opcionales
     if (data) {
-      data.color = data.color || getDefaultColor(data.id)
+      return {
+        ...data,
+        color: getDefaultColor(data.id),
+        description: undefined,
+        stock: undefined,
+      }
     }
 
-    return data
+    return null
   } catch (err) {
     console.error('Unexpected error fetching product:', err)
     return null
