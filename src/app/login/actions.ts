@@ -13,7 +13,12 @@ export async function signIn(email: string, password: string) {
     })
 
     if (error) {
-      console.error('Sign in error:', error)
+      console.error('Sign in error:', {
+        message: error.message,
+        status: error.status,
+        code: error.code,
+      })
+      
       // Proporcionar mensajes más amigables según el tipo de error
       if (error.message.includes('Invalid login credentials')) {
         return { error: 'Email o contraseña incorrectos. Intenta de nuevo.' }
@@ -21,12 +26,25 @@ export async function signIn(email: string, password: string) {
       if (error.message.includes('Email not confirmed')) {
         return { error: 'Por favor, confirma tu email antes de iniciar sesión.' }
       }
+      if (error.message.includes('User not found')) {
+        return { error: 'Este usuario no existe. Intenta registrarte primero.' }
+      }
+      
       return { error: error.message || 'Error al iniciar sesión. Intenta de nuevo.' }
     }
 
     redirect('/pos')
   } catch (err) {
-    console.error('Unexpected error during sign in:', err)
+    console.error('Unexpected error during sign in:', {
+      error: err,
+      message: err instanceof Error ? err.message : 'Unknown error',
+      stack: err instanceof Error ? err.stack : undefined,
+    })
+    
+    if (err instanceof Error && err.message.includes('environment variables')) {
+      return { error: 'Configuración del servidor incompleta. Contacta al administrador.' }
+    }
+    
     return { error: 'Error inesperado. Verifica tu conexión a internet.' }
   }
 }
@@ -46,10 +64,22 @@ export async function signUp(email: string, password: string, fullName: string) 
     })
 
     if (error) {
-      console.error('Sign up error:', error)
+      console.error('Sign up error:', {
+        message: error.message,
+        status: error.status,
+        code: error.code,
+      })
+      
       if (error.message.includes('already registered')) {
         return { error: 'Este email ya está registrado. Intenta iniciar sesión.' }
       }
+      if (error.message.includes('rate limit')) {
+        return { error: 'Demasiados intentos. Intenta de nuevo en unos minutos.' }
+      }
+      if (error.message.includes('invalid')) {
+        return { error: 'Email inválido. Usa un formato de email válido (ej: usuario@dominio.com).' }
+      }
+      
       return { error: error.message || 'Error al registrarse. Intenta de nuevo.' }
     }
 
@@ -61,19 +91,27 @@ export async function signUp(email: string, password: string, fullName: string) 
           {
             id: data.user.id,
             full_name: fullName,
-            email: email,
           },
         ])
 
       if (profileError) {
         console.error('Profile creation error:', profileError)
-        return { error: 'Error al crear tu perfil. Contacta a soporte.' }
+        // No retornar error aquí porque el usuario se creó en auth
+        // El perfil se puede crear después
       }
     }
 
     return { success: true, message: 'Registro exitoso. Por favor, inicia sesión.' }
   } catch (err) {
-    console.error('Unexpected error during sign up:', err)
+    console.error('Unexpected error during sign up:', {
+      error: err,
+      message: err instanceof Error ? err.message : 'Unknown error',
+    })
+    
+    if (err instanceof Error && err.message.includes('environment variables')) {
+      return { error: 'Configuración del servidor incompleta. Contacta al administrador.' }
+    }
+    
     return { error: 'Error inesperado. Verifica tu conexión a internet.' }
   }
 }
