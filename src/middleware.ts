@@ -29,6 +29,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
+  // Si hay sesión y trata de acceder a /login, redirigir a /pos
+  if (session && request.nextUrl.pathname === '/login') {
+    return NextResponse.redirect(new URL('/pos', request.url))
+  }
+
   return response
 }
 
