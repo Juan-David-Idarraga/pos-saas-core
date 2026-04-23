@@ -1,36 +1,54 @@
 'use client'
-import React from 'react'
+
+import React, { useEffect, useState } from 'react'
 import { useCartStore } from '../../lib/store'
-
-// Interfaz para definir la estructura de un producto
-interface Product {
-  id: string
-  name: string
-  price: number
-  color: string
-}
-
-// Datos de prueba simulando la base de datos
-const mockProducts: Product[] = [
-  { id: '1', name: 'Hamburguesa Doble', price: 8500, color: 'bg-orange-500' },
-  { id: '2', name: 'Papas Mixtas', price: 4500, color: 'bg-yellow-500' },
-  { id: '3', name: 'Bebida 500ml', price: 2000, color: 'bg-blue-500' },
-  { id: '4', name: 'Pizza Pepperoni', price: 12000, color: 'bg-red-500' },
-  { id: '5', name: 'Empanada de Pino', price: 2500, color: 'bg-amber-700' },
-  { id: '6', name: 'Cerveza Artesanal', price: 4000, color: 'bg-amber-400' },
-]
+import ProductGrid, { Product } from './ProductGrid'
+import { getProductsByBusiness, getCurrentUserBusinessId } from '../../lib/services/productService'
 
 export default function POSPage() {
-  const addItem = useCartStore((state) => state.addItem)
+  const [products, setProducts] = useState<Product[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
   const cartItems = useCartStore((state) => state.items)
   const total = useCartStore((state) => state.total)
   const increaseQuantity = useCartStore((state) => state.increaseQuantity)
   const decreaseQuantity = useCartStore((state) => state.decreaseQuantity)
   const clearCart = useCartStore((state) => state.clearCart)
+  const removeItem = useCartStore((state) => state.removeItem)
 
-  const handleAddToOrder = (product: Product) => {
-    addItem(product)
-  }
+  // Cargar productos al montar el componente
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        setIsLoading(true)
+        setError(null)
+
+        // Obtener el business_id del usuario actual
+        const businessId = await getCurrentUserBusinessId()
+        if (!businessId) {
+          setError('No se pudo identificar tu negocio. Por favor, recarga la página.')
+          return
+        }
+
+        // Obtener productos del negocio
+        const productsData = await getProductsByBusiness(businessId)
+        if (productsData === null) {
+          setError('Error al cargar los productos. Intenta nuevamente.')
+          return
+        }
+
+        setProducts(productsData)
+      } catch (err) {
+        console.error('Error loading products:', err)
+        setError('Ocurrió un error inesperado al cargar los productos.')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadProducts()
+  }, [])
 
   return (
     <div className="flex h-screen w-full">
@@ -41,25 +59,7 @@ export default function POSPage() {
           <p className="text-slate-500">Selecciona los productos para la comanda</p>
         </header>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 lg:gap-6">
-          {mockProducts.map((product) => (
-            <button
-              key={product.id}
-              onClick={() => handleAddToOrder(product)}
-              className="flex flex-col items-center justify-center text-center p-4 h-32 md:h-40 rounded-2xl shadow-sm border border-slate-200 bg-white hover:bg-slate-50 hover:border-blue-400 active:scale-95 transition-all select-none group"
-            >
-              <div className={`w-12 h-12 md:w-16 md:h-16 rounded-full mb-3 shadow-sm ${product.color} group-hover:scale-105 transition-transform`} />
-              
-              <span className="font-semibold text-slate-800 text-sm md:text-base leading-tight">
-                {product.name}
-              </span>
-              
-              <span className="mt-1 text-slate-500 font-bold text-sm md:text-base">
-                ${product.price.toLocaleString('es-CL')}
-              </span>
-            </button>
-          ))}
-        </div>
+        <ProductGrid products={products} isLoading={isLoading} error={error} />
       </div>
 
       {/* Sección del Carrito */}
@@ -71,15 +71,34 @@ export default function POSPage() {
           ) : (
             <ul>
               {cartItems.map((item) => (
-                <li key={item.id} className="flex justify-between items-center py-2 border-b border-slate-100 last:border-b-0">
-                  <div>
-                    <p className="font-semibold">{item.name}</p>
-                    <p className="text-sm text-slate-500">${item.price.toLocaleString('es-CL')} x {item.quantity}</p>
+                <li key={item.id} className="flex justify-between items-center py-3 border-b border-slate-100 last:border-b-0">
+                  <div className="flex-1">
+                    <p className="font-semibold text-sm">{item.name}</p>
+                    <p className="text-xs text-slate-500">${item.price.toLocaleString('es-CL')} x {item.quantity}</p>
+                    <p className="text-xs font-semibold text-slate-700 mt-1">
+                      Subtotal: ${(item.price * item.quantity).toLocaleString('es-CL')}
+                    </p>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <button onClick={() => decreaseQuantity(item.id)} className="bg-slate-100 text-slate-700 px-2 py-1 rounded-md hover:bg-slate-200">-</button>
-                    <span>{item.quantity}</span>
-                    <button onClick={() => increaseQuantity(item.id)} className="bg-slate-100 text-slate-700 px-2 py-1 rounded-md hover:bg-slate-200">+</button>
+                  <div className="flex items-center space-x-1 ml-2">
+                    <button
+                      onClick={() => decreaseQuantity(item.id)}
+                      className="bg-slate-100 text-slate-700 px-2 py-1 rounded-md hover:bg-slate-200 text-sm font-semibold"
+                    >
+                      −
+                    </button>
+                    <span className="w-6 text-center font-semibold">{item.quantity}</span>
+                    <button
+                      onClick={() => increaseQuantity(item.id)}
+                      className="bg-slate-100 text-slate-700 px-2 py-1 rounded-md hover:bg-slate-200 text-sm font-semibold"
+                    >
+                      +
+                    </button>
+                    <button
+                      onClick={() => removeItem(item.id)}
+                      className="bg-red-100 text-red-700 px-2 py-1 rounded-md hover:bg-red-200 text-sm font-semibold ml-1"
+                    >
+                      ✕
+                    </button>
                   </div>
                 </li>
               ))}
@@ -89,15 +108,19 @@ export default function POSPage() {
         <div className="mt-4 pt-4 border-t border-slate-200">
           <div className="flex justify-between items-center mb-4">
             <span className="text-lg font-bold">Total:</span>
-            <span className="text-lg font-bold">${total.toLocaleString('es-CL')}</span>
+            <span className="text-2xl font-bold text-blue-600">${total.toLocaleString('es-CL')}</span>
           </div>
           <button
             onClick={clearCart}
-            className="w-full bg-red-500 text-white py-3 rounded-lg font-semibold hover:bg-red-600 transition-colors"
+            className="w-full bg-red-500 text-white py-3 rounded-lg font-semibold hover:bg-red-600 transition-colors disabled:opacity-50"
+            disabled={cartItems.length === 0}
           >
             Vaciar Comanda
           </button>
-          <button className="w-full bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition-colors mt-2">
+          <button
+            className="w-full bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition-colors mt-2 disabled:opacity-50"
+            disabled={cartItems.length === 0}
+          >
             Procesar Pago
           </button>
         </div>
