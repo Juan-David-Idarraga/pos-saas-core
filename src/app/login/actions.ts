@@ -45,6 +45,12 @@ export async function signIn(email: string, password: string) {
     console.log('[signIn] Authentication successful, redirecting to /pos')
     redirect('/pos')
   } catch (err) {
+    // Ignorar el error NEXT_REDIRECT que lanza Next.js al redirigir
+    if (err instanceof Error && err.message === 'NEXT_REDIRECT') {
+      console.log('[signIn] Redirect in progress (NEXT_REDIRECT caught)')
+      throw err // Re-lanzar para que Next.js maneje la redirección
+    }
+
     console.error('[signIn] Unexpected error caught:', {
       error: err,
       message: err instanceof Error ? err.message : 'Unknown error',
@@ -132,6 +138,11 @@ export async function signUp(email: string, password: string, fullName: string) 
     console.log('[signUp] Sign up successful')
     return { success: true, message: 'Registro exitoso. Por favor, inicia sesión.' }
   } catch (err) {
+    // Ignorar NEXT_REDIRECT en signUp también
+    if (err instanceof Error && err.message === 'NEXT_REDIRECT') {
+      throw err
+    }
+
     console.error('[signUp] Unexpected error caught:', {
       error: err,
       message: err instanceof Error ? err.message : 'Unknown error',
@@ -153,6 +164,11 @@ export async function signOut() {
     console.log('[signOut] Sign out successful')
     redirect('/login')
   } catch (err) {
+    // Ignorar NEXT_REDIRECT en signOut
+    if (err instanceof Error && err.message === 'NEXT_REDIRECT') {
+      throw err
+    }
+
     console.error('[signOut] Error during sign out:', err)
     redirect('/login')
   }
